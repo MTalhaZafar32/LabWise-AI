@@ -1,0 +1,54 @@
+test_id,canonical_name,short_name,panel_name,specimen_type,category,loinc_code,description
+1,NT-proBNP,NT-proBNP,Cardiac,blood,chemistry,33762-6,"Used to diagnose and monitor heart failure, reflecting heart stress."
+2,Troponin T,Troponin-T,Cardiac,blood,chemistry,67151-1,"Indicates heart muscle injury, often used to diagnose heart attacks."
+3,C-Peptide,C-Peptide,Endocrine,blood,chemistry,1986-9,"Measures insulin production, aiding in distinguishing type 1 and type 2 diabetes."
+4,Insulin,Insulin,Endocrine,blood,chemistry,20448-7,"Evaluates insulin production and resistance, significant for diabetes management."
+5,"C-Reactive Protein, High Sensitivity",CRP-HS,Inflammation,blood,chemistry,30522-7,"Measures low levels of inflammation, assessing cardiovascular risk."
+6,Total Cholesterol,Cholesterol,Lipid Profile,blood,chemistry,2093-3,Measures all types of cholesterol in the blood.
+7,Triglycerides,Triglycerides,Lipid Profile,blood,chemistry,2571-8,Measures the level of fats in the blood.
+8,HDL Cholesterol,HDL,Lipid Profile,blood,chemistry,2085-9,Known as good cholesterol that reduces heart disease risk.
+9,LDL Cholesterol (Calculated),LDL,Lipid Profile,blood,chemistry,NA,Calculated measure of bad cholesterol.
+10,Glucose,Glucose,Metabolic,blood,chemistry,2345-7,Measures blood sugar levels.
+11,Blood Urea Nitrogen,BUN,Renal,blood,chemistry,3094-0,Assesses kidney function and nitrogen waste.
+12,Creatinine,Creatinine,Renal,blood,chemistry,2160-0,Indicates kidney function by measuring creatinine.
+13,BUN/Creatinine Ratio,BUN/Cr Ratio,Renal,blood,chemistry,NA,Ratio reflecting hydration and renal function.
+14,Sodium,Sodium,Electrolytes,blood,chemistry,2951-2,Essential electrolyte reflecting hydration.
+15,Potassium,Potassium,Electrolytes,blood,chemistry,2823-3,Critical electrolyte for nerve and muscle function.
+16,Chloride,Chloride,Electrolytes,blood,chemistry,2075-0,Electrolyte maintaining fluid balance.
+17,"Carbon Dioxide, Total",CO2,Electrolytes,blood,chemistry,2028-9,Assesses acid-base balance.
+18,Calcium,Calcium,Bone / Metabolic,blood,chemistry,17861-6,Essential mineral for bone health.
+19,Albumin,Albumin,Liver / Protein,blood,chemistry,1751-7,Main protein maintaining fluid balance.
+20,"Globulin, Total (Calculated)",Globulin,Liver / Protein,blood,chemistry,NA,Calculated immune-related protein.
+21,Albumin/Globulin Ratio,A/G Ratio,Liver / Protein,blood,chemistry,NA,Ratio of albumin to globulin.
+22,"Bilirubin, Total",Bilirubin,Liver,blood,chemistry,1975-2,Measures total bilirubin indicating liver function.
+23,Alkaline Phosphatase,ALP,Liver / Bone,blood,chemistry,6768-6,Enzyme linked to liver and bone health.
+24,Aspartate Aminotransferase,AST,Liver,blood,chemistry,1920-8,Enzyme indicating liver or muscle damage.
+25,Alanine Aminotransferase,ALT,Liver,blood,chemistry,1742-6,Liver enzyme indicating hepatocellular injury.
+26,Hemoglobin A1c,HbA1c,Diabetes,blood,chemistry,4548-4,Measures average blood glucose over 2-3 months.
+27,Urine Creatinine,Urine Creatinine,Renal,urine,chemistry,65634-8,Used to assess kidney function in urine.
+28,Urine Albumin,Urine Albumin,Renal,urine,chemistry,34535-5,Measures albumin in urine indicating kidney damage.
+29,Troponin I,Troponin-I,Cardiac,blood,chemistry,42757-5,"Highly specific biomarker for myocardial injury, used in diagnosis of acute coronary syndromes."
+30,Troponin (unspecified),Troponin,Cardiac,blood,chemistry,NA,General troponin measurement when assay type (I or T) is not specified.
+31,Thyroid Stimulating Hormone,TSH,Thyroid,blood,endocrine,3016-3,Pituitary hormone that regulates thyroid gland function and thyroid hormone production.
+32,Free Thyroxine,Free T4,Thyroid,blood,endocrine,3024-7,Unbound thyroxine level reflecting biologically active thyroid hormone status.
+33,Estimated GFR,eGFR,Renal,blood,calculated,48642-3,Calculated estimate of kidney filtration function based on serum creatinine and patient factors.
+34,Cortisol,Cortisol,Adrenal,blood,endocrine,2143-6,"Adrenal steroid hormone involved in stress response, metabolism, and immune regulation."
+52,Hepatitis B Surface Antigen,HBsAg,Hepatitis,blood,serology,5195-3,Detects active hepatitis B infection.
+53,Hepatitis B Surface Antibody,Anti-HBs,Hepatitis,blood,serology,5193-8,Determines immunity to hepatitis B.
+54,Hepatitis C Antibody,Anti-HCV,Hepatitis,blood,serology,16128-1,Screens for hepatitis C infection.
+55,Rubella IgM,Rubella IgM,Antenatal,blood,serology,5338-5,Detects recent rubella infection.
+56,Syphilis Screen (VDRL/RPR),VDRL/RPR,Antenatal,blood,serology,31147-2,Screens for syphilis infection.
+57,Parathyroid Hormone,Intact PTH,Bone / Endocrine,blood,chemistry,2731-8,Regulates calcium and phosphate metabolism.
+58,Homocysteine,Homocysteine,Cardiac Risk,blood,chemistry,13965-9,Assesses cardiovascular and thrombotic risk.
+59,Total Testosterone,Testosterone,Endocrine,blood,chemistry,2986-8,Measures total testosterone level.
+60,Reticulocyte Count,Retic Count,Hematology,blood,hematology,4679-7,Assesses bone marrow response.
+61,Direct Coombs Test,DAT,Immunohematology,blood,immunology,6742-1,Detects antibodies bound to RBCs.
+62,Indirect Coombs Test,IAT,Immunohematology,blood,immunology,6741-3,Detects free circulating RBC antibodies.
+63,Stool Fat,Stool Fat,Gastrointestinal,stool,chemistry,16142-2,Evaluates fat malabsorption.
+64,Stool Microscopy,Stool Microscopy,Gastrointestinal,stool,microscopy,NA,Microscopic examination of stool.
+65,Stool Ova and Parasites,Ova & Parasites,Gastrointestinal,stool,microscopy,NA,Detects intestinal parasites.
+66,"Microalbumin, Urine",Microalbumin,Renal,urine,chemistry,14957-5,Early marker of kidney damage.
+67,Albumin/Creatinine Ratio,ACR,Renal,urine,chemistry,9318-7,Assesses albuminuria severity.
+68,Urine Creatinine (24h),Urine Creatinine,Renal,urine,chemistry,65634-8,Measures creatinine excretion in urine.
+69,Corrected Calcium,Corrected Ca,Bone / Metabolic,blood,calculated,NA,Calculated calcium adjusted for albumin.
+70,Free Androgen Index,FAI,Endocrine,blood,calculated,NA,Calculated androgen status indicator.

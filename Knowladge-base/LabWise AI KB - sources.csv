@@ -1,0 +1,14 @@
+source_id,name,type,url,year,trust_level
+1,NORC Clinical Lab Tests,dataset,https://docs.aireadi.org/v1-dataDomainTable,2024,4
+4,Expanded Laboratory Test Knowledge Dataset (Scribd),educational document,https://www.scribd.com,2024,2
+5,Normal Laboratory Values (IAPAC),clinical reference,https://www.iapac.org/fact-sheet/normal-laboratory-values,2025,4
+6,Laboratory Values Reference (General Medicine),clinical reference,https://www.nbme.org/sites/default/files/2025-03/NBME_Laboratory_Reference_Values.pdf,NA,4
+7,American College of Physicians (ACP) Laboratory Values,clinical reference,https://annualmeeting.acponline.org/sites/default/files/shared/documents/for-meeting-attendees/normal-lab-values.pdf,2015,5
+8,NIH NLM – Normal Reference Ranges (Open RN),clinical reference,https://www.ncbi.nlm.nih.gov/books/NBK615342,2024,5
+9,"Medscape – Lab Values, Normal Adult",clinical reference,https://emedicine.medscape.com/article/2172316-overview,2025,4
+10,ABIM Laboratory Test Reference Ranges,clinical reference,https://www.abim.org/media/e2wdwdqu/laboratory-reference-ranges.pdf,2025,4
+11,World Health Organization (WHO) Laboratory Manual,clinical reference,https://www.who.int/publications/i/item/WHO-HTM-TB-2013.11,2023,5
+12,CDC Viral Hepatitis Laboratory Guidelines,clinical reference,https://www.cdc.gov/hepatitis/hbv/labtesting.htm,2024,5
+13,UpToDate Clinical Laboratory Reference,clinical reference,https://www.uptodate.com,2025,5
+14,Medscape Laboratory Reference Ranges,clinical reference,https://emedicine.medscape.com/article/2172316-overview,2025,4
+15,ABIM Laboratory Test Reference Ranges,clinical reference,https://www.abim.org/media/e2wdwdqu/laboratory-reference-ranges.pdf,2025,4

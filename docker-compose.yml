@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Ollama service for local LLM
+  ollama:
+    image: ollama/ollama:latest
+    container_name: labwise-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    command: serve
+
+  # Backend API service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: labwise-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - DATABASE_URL=sqlite:///./data/labwise.db
+    volumes:
+      - ./data:/app/data
+      - ./Knowladge-base:/app/Knowladge-base
+      - ./uploads:/app/uploads
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+volumes:
+  ollama_data:
