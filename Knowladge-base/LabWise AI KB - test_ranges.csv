@@ -387,8 +387,8 @@ range_id,test_id,source_id,canonical_name,unit,value_type,ref_low,ref_high,ref_t
 406,NA,10,Copper,mcg/dL,numeric,100,200,NA,Any,NA,NA,serum,1,2025,
 407,NA,10,Copper,mcg/24 hr,numeric,0,100,NA,Any,NA,NA,urine,1,2025,
 408,NA,10,Coproporphyrin,mcg/24 hr,numeric,50,250,NA,Any,NA,NA,urine,1,2025,
-409,NA,10,Cortisol,free urine,mcg/24 hr,numeric,4,50,NA,Any,NA,NA,urine,1,
-410,NA,10,Cortisol,mcg/dL,numeric,5,25,NA,Any,NA,NA,8 AM plasma,1,2025,2025
+409,NA,10,"Cortisol, free urine",mcg/24 hr,numeric,4,50,NA,Any,NA,NA,urine,1,2025,
+410,NA,10,Cortisol,mcg/dL,numeric,5,25,NA,Any,NA,NA,8 AM plasma,1,2025,
 411,NA,10,Cortisol,mcg/dL,numeric,NA,10,<10,Any,NA,NA,4 PM plasma,1,2025,
 412,NA,10,Cortisol,mcg/dL,numeric,18,NA,>=18,Any,NA,NA,post cosyntropin,1,2025,
 413,NA,10,Cortisol,mcg/dL,numeric,NA,1.8,<1.8,Any,NA,NA,1 mg suppression,1,2025,
