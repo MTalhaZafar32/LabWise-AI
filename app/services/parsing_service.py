@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from app.services.llm_service import llm_service
+
 class ParsingService:
     """Service for parsing OCR text into structured lab results"""
     
@@ -16,79 +18,72 @@ class ParsingService:
     
     def parse_lab_report(self, ocr_text: str) -> List[Dict[str, any]]:
         """
-        Parse OCR text to extract lab test results
-        
-        Args:
-            ocr_text: Raw text from OCR
-            
-        Returns:
-            List of dictionaries containing test results
+        Parse OCR text to extract lab test results using LLM
         """
         results = []
-        lines = ocr_text.split('\n')
         
-        for line in lines:
-            line = line.strip()
-            if not line or len(line) < 5:
-                continue
-            
-            # Try to parse the line
-            parsed = self._parse_line(line)
-            if parsed:
-                results.append(parsed)
+        # Step 1: Use LLM to extract structured data
+        logger.info("Sending OCR text to LLM for extraction...")
+        llm_data = llm_service.extract_structured_data(ocr_text)
         
-        logger.info(f"Parsed {len(results)} test results from OCR text")
-        return results
-    
-    def _parse_line(self, line: str) -> Optional[Dict[str, any]]:
-        """
-        Parse a single line to extract test information
-        
-        Args:
-            line: Single line of text
-            
-        Returns:
-            Dictionary with test info or None
-        """
-        # Multiple patterns to handle different formats
-        patterns = [
-            # Pattern 1: "Test Name: 12.5 g/dL"
-            r'([A-Za-z][A-Za-z\s\-()]+?)\s*[:=]\s*([\d.]+)\s*([A-Za-z/μ%°×\^0-9]+)',
-            # Pattern 2: "Test Name 12.5 g/dL"
-            r'([A-Za-z][A-Za-z\s\-()]+?)\s+([\d.]+)\s+([A-Za-z/μ%°×\^0-9]+)',
-            # Pattern 3: "Test Name    12.5    g/dL" (multiple spaces)
-            r'([A-Za-z][A-Za-z\s\-()]+?)\s{2,}([\d.]+)\s+([A-Za-z/μ%°×\^0-9]+)',
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, line)
-            if match:
-                test_name = match.group(1).strip()
-                value_str = match.group(2).strip()
-                unit = match.group(3).strip()
+        if not llm_data:
+            logger.warning("LLM returned no structured data")
+            return []
+
+        # Step 2: Normalize and validate extracted data
+        for item in llm_data:
+            try:
+                test_name = item.get('test_name')
+                value = item.get('value')
+                unit = item.get('unit', '')
+                ref_range = item.get('ref_range', '')
                 
-                # Skip if test name is too short or looks invalid
-                if len(test_name) < 2 or test_name.isdigit():
+                if not test_name or value is None:
                     continue
                 
-                # Extract numeric value
-                try:
-                    value = float(value_str)
-                except ValueError:
+                # Filter out obvious metadata that LLM might have extracted
+                lower_name = test_name.lower()
+                blocklist = [
+                    'age', 'sex', 'gender', 'page', 'date', 'time',
+                    'registered', 'collected', 'reported', 'generated', 'received',
+                    'pid', 'patient', 'name', 'mrn', 'dob', 'ref', 'dr', 'doctor',
+                    'hospital', 'lab', 'location', 'phone', 'fax', 'email'
+                ]
+                
+                # Check if any blocklist word is the ENTIRE name or if the name starts with it
+                if any(lower_name == blocked or lower_name.startswith(f"{blocked} ") for blocked in blocklist):
                     continue
+                
+                # Ensure value is numeric
+                if isinstance(value, str):
+                    try:
+                        # Handle ranges or "<" symbols if LLM extracted them as value
+                        clean_val = re.sub(r'[^\d.]', '', value)
+                        value = float(clean_val)
+                    except ValueError:
+                        continue
                 
                 # Normalize
                 normalized_name = self.medical_utils.normalize_test_name(test_name)
                 normalized_unit = self.medical_utils.normalize_unit(unit)
                 
-                return {
+                results.append({
                     'test_name': test_name,
                     'normalized_name': normalized_name,
                     'value': value,
                     'unit': normalized_unit,
-                    'raw_line': line
-                }
+                    'reference_range': ref_range
+                })
+                
+            except Exception as e:
+                logger.warning(f"Error normalizing item {item}: {e}")
+                continue
         
+        logger.info(f"LLM extracted and parsed {len(results)} test results")
+        return results
+
+    def _parse_line(self, line: str) -> Optional[Dict[str, any]]:
+        """Deprecated: Regex parsing (kept for reference or fallback if needed in future)"""
         return None
     
     def clean_test_name(self, test_name: str) -> str:

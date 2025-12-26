@@ -19,10 +19,13 @@ def init_db():
     """Initialize database tables"""
     Base.metadata.create_all(bind=engine)
 
-def get_db() -> Session:
+def get_db():
     """Get database session"""
+    print("DEBUG: Getting DB session...")
     db = SessionLocal()
     try:
+        print("DEBUG: DB session created")
         yield db
     finally:
+        print("DEBUG: Closing DB session")
         db.close()

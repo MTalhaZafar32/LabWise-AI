@@ -22,6 +22,7 @@ class LabService:
     def __init__(self):
         self.file_utils = FileUtils()
     
+    
     async def process_report(
         self,
         filename: str,
@@ -39,58 +40,81 @@ class LabService:
         Returns:
             Dictionary with processed results
         """
+        import time
+        overall_start = time.time()
         logger.info(f"Processing lab report: {filename}")
         
-        # Step 1: Validate file
-        is_valid, error_msg = self.file_utils.validate_file(
-            filename,
-            file_content,
-            settings.MAX_UPLOAD_SIZE
-        )
-        
-        if not is_valid:
-            raise ValueError(error_msg)
-        
-        # Step 2: Convert to images
-        images = self._prepare_images(filename, file_content)
-        logger.info(f"Prepared {len(images)} image(s) for processing")
-        
-        # Step 3: OCR Extraction
-        ocr_text, ocr_confidence = self._extract_text(images)
-        logger.info(f"OCR completed with confidence: {ocr_confidence:.2f}")
-        
-        # Step 4: Parse text to extract test results
-        parsed_results = parsing_service.parse_lab_report(ocr_text)
-        logger.info(f"Parsed {len(parsed_results)} test results")
-        
-        if not parsed_results:
-            return {
-                'success': False,
-                'error': 'No test results could be extracted from the document',
-                'ocr_confidence': ocr_confidence
-            }
-        
-        # Step 5: RAG - Lookup in knowledge base
-        enriched_results = rag_service.batch_lookup(db, parsed_results)
-        logger.info("Knowledge base lookup completed")
-        
-        # Step 6: Rule-based classification
-        classified_results = classification_service.classify_batch(enriched_results)
-        logger.info("Classification completed")
-        
-        # Step 7: LLM explanation generation
-        explained_results = llm_service.generate_batch_explanations(classified_results)
-        logger.info("Explanation generation completed")
-        
-        # Step 8: Aggregate and format results
-        final_results = self._format_results(
-            explained_results,
-            ocr_confidence,
-            ocr_text
-        )
-        
-        logger.info("Lab report processing completed successfully")
-        return final_results
+        try:
+            # Step 1: Validate file
+            step_start = time.time()
+            is_valid, error_msg = self.file_utils.validate_file(
+                filename,
+                file_content,
+                settings.MAX_UPLOAD_SIZE
+            )
+            logger.info(f"Step 1: Validation took {time.time() - step_start:.2f}s")
+            
+            if not is_valid:
+                raise ValueError(error_msg)
+            
+            # Step 2: Convert to images
+            step_start = time.time()
+            images = self._prepare_images(filename, file_content)
+            logger.info(f"Step 2: Image preparation took {time.time() - step_start:.2f}s (Images: {len(images)})")
+            
+            # Step 3: OCR Extraction
+            step_start = time.time()
+            ocr_text, ocr_confidence = self._extract_text(images)
+            logger.info(f"Step 3: OCR took {time.time() - step_start:.2f}s (Confidence: {ocr_confidence:.2f})")
+            
+            # Step 4: Parse text to extract test results (LLM Based)
+            step_start = time.time()
+            parsed_results = parsing_service.parse_lab_report(ocr_text)
+            logger.info(f"Step 4: Parsing took {time.time() - step_start:.2f}s (Parsed: {len(parsed_results)})")
+            
+            # Note: We proceed even if no results found to return the "0% Match" state as requested
+            
+            # Step 5: RAG - Lookup in knowledge base
+            step_start = time.time()
+            enriched_results = rag_service.batch_lookup(db, parsed_results)
+            logger.info(f"Step 5: RAG lookup took {time.time() - step_start:.2f}s")
+            
+            # Step 6: Rule-based classification
+            step_start = time.time()
+            classified_results = classification_service.classify_batch(enriched_results)
+            logger.info(f"Step 6: Classification took {time.time() - step_start:.2f}s")
+            
+            # Step 7: Generate Overall Patient Summary (NEW)
+            step_start = time.time()
+            
+            # Check if we have any valid Knowledge Base matches
+            kb_matches = sum(1 for r in classified_results if r.get('kb_found'))
+            
+            if kb_matches > 0:
+                # Generate AI summary from findings
+                overall_summary = llm_service.generate_final_summary(classified_results)
+            else:
+                # Fallback summary for 0% match
+                overall_summary = "Unable to identify specific lab tests from our knowledge base. Please contact your doctor interpretation. We do not have data about this specific report format."
+                
+            # Also generate per-test explanations for the detail view
+            explained_results = llm_service.generate_batch_explanations(classified_results)
+            logger.info(f"Step 7: Summarization took {time.time() - step_start:.2f}s")
+            
+            # Step 8: Aggregate and format results
+            final_results = self._format_results(
+                explained_results,
+                ocr_confidence,
+                ocr_text,
+                overall_summary
+            )
+            
+            logger.info(f"Total processing time: {time.time() - overall_start:.2f}s")
+            return final_results
+            
+        except Exception as e:
+            logger.error(f"Failed at step: {str(e)}", exc_info=True)
+            raise
     
     def _prepare_images(self, filename: str, file_content: bytes) -> List[Image.Image]:
         """Convert file to list of images"""
@@ -115,7 +139,8 @@ class LabService:
         self,
         results: List[Dict],
         ocr_confidence: float,
-        ocr_text: str
+        ocr_text: str,
+        overall_summary: str
     ) -> Dict:
         """Format final results for API response"""
         
@@ -163,6 +188,7 @@ class LabService:
                 'high_results': high_count,
                 'unknown_results': unknown_count
             },
+            'overall_summary': overall_summary,
             'confidence': {
                 'ocr_confidence': round(ocr_confidence, 2),
                 'confidence_level': confidence_level

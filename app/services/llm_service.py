@@ -2,7 +2,9 @@
 LLM Service for generating explanations using Ollama
 """
 import requests
-from typing import Dict, Optional
+from typing import Dict, Optional, List
+import json
+import re
 from app.utils.config import settings
 import logging
 
@@ -148,6 +150,119 @@ Provide a clear, concise explanation:"""
             explained_results.append(result)
         
         return explained_results
+    
+    def extract_structured_data(self, ocr_text: str) -> List[Dict]:
+        """
+        Extract structured test results from OCR text using LLM
+        """
+        prompt = f"""You are a medical data extraction assistant. extracting lab test results from OCR text.
+        
+        EXTRACT FORMAT (JSON List):
+        [{{
+            "test_name": "exact test name found",
+            "value": numeric_value,
+            "unit": "unit string",
+            "ref_range": "reference range string"
+        }}]
+
+        RULES:
+        1. Extract ONLY lab tests (e.g., Hemoglobin, RBC, WBC, Glucose).
+        2. DO NOT EXTRACT: Age, Sex, Date, Page Number, PID, MRN, Registered, Collected, Reported.
+        3. IGNORE headers like "Test Name", "Result", "Units".
+        4. If a value is missing or not numeric, skip the test.
+        5. Return ONLY valid JSON. No markdown, no explanations.
+
+        OCR TEXT:
+        {ocr_text}
+        
+        JSON OUTPUT:"""
+
+        try:
+            if not self.check_ollama_available():
+                logger.error("Ollama not available for extraction")
+                return []
+
+            response = requests.post(
+                f"{self.base_url}/api/generate",
+                json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 1000}
+                },
+                timeout=45
+            )
+            
+            if response.status_code == 200:
+                content = response.json().get('response', '')
+                print(f"[DEBUG LLM RAW OUTPUT]: {content[:500]}")  # First 500 chars
+                # Clean markdown code blocks if present
+                content = re.sub(r'```json\s*|\s*```', '', content)
+                try:
+                    data = json.loads(content)
+                    if isinstance(data, list):
+                        return data
+                    elif isinstance(data, dict) and 'results' in data:
+                        return data['results']
+                    else:
+                        logger.warning(f"Unexpected JSON structure: {type(data)}")
+                        return []
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse LLM output as JSON: {content}")
+                    return []
+            return []
+        except Exception as e:
+            logger.error(f"Extraction failed: {str(e)}")
+            return []
+
+    def generate_final_summary(self, results: List[Dict]) -> str:
+        """
+        Generate a final summary paragraph based on findings
+        """
+        if not results:
+            return "No test results were identified to summarize."
+
+        # Format findings for prompt
+        findings_str = "\n".join([
+            f"- {r.get('test_name')}: {r.get('value')} {r.get('unit')} ({r.get('classification')})"
+            for r in results
+        ])
+        
+        prompt = f"""You are a medical AI assistant. Write a summary for a patient based on the following lab results.
+        
+        FINDINGS:
+        {findings_str}
+        
+        INSTRUCTIONS:
+        1. Write a cohesive paragraph summarizing the health status.
+        2. Highlight any ABNORMAL (High/Low) results.
+        3. Use simple, clear language.
+        4. Do NOT diagnose diseases.
+        5. End with a standard medical disclaimer.
+        
+        SUMMARY:"""
+        
+        try:
+            if not self.check_ollama_available():
+                return "AI Summary unavailable."
+
+            response = requests.post(
+                f"{self.base_url}/api/generate",
+                json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.3}
+                },
+                timeout=45
+            )
+            
+            if response.status_code == 200:
+                return response.json().get('response', '').strip()
+            return "Failed to generate summary."
+        except Exception as e:
+            logger.error(f"Summary generation failed: {str(e)}")
+            return "Error generating summary."
 
 # Global instance
 llm_service = LLMService()

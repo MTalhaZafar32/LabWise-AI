@@ -49,7 +49,13 @@ class FileUtils:
             List of PIL Image objects
         """
         try:
-            images = convert_from_bytes(pdf_bytes, dpi=dpi)
+            # Specify poppler path for Windows
+            poppler_path = r"C:\poppler\poppler-24.08.0\Library\bin"
+            images = convert_from_bytes(
+                pdf_bytes, 
+                dpi=dpi,
+                poppler_path=poppler_path
+            )
             return images
         except Exception as e:
             raise ValueError(f"Failed to convert PDF to images: {str(e)}")
