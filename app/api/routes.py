@@ -3,9 +3,9 @@ API routes for LabWise AI
 """
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api.models import AnalysisResponse, HealthResponse, ErrorResponse
+from app.api.models import AnalysisResponse, HealthResponse, ErrorResponse, StatsResponse
 from app.services.lab_service import lab_service
-from app.services.llm_service import llm_service
+from app.services.stats_service import stats_service
 from app.db.database import get_db
 from app.utils.config import settings
 import logging
@@ -17,12 +17,9 @@ router = APIRouter(prefix=settings.API_PREFIX)
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
-    ollama_available = llm_service.check_ollama_available()
-    
     return HealthResponse(
         status="healthy",
-        version=settings.APP_VERSION,
-        ollama_available=ollama_available
+        version=settings.APP_VERSION
     )
 
 @router.post("/analyze", response_model=AnalysisResponse)
@@ -64,6 +61,27 @@ async def analyze_lab_report(
         raise HTTPException(
             status_code=500,
             detail=f"An error occurred while processing the report: {str(e)}"
+        )
+
+@router.get("/stats", response_model=StatsResponse)
+async def get_statistics(db: Session = Depends(get_db)):
+    """
+    Get knowledge base statistics
+    
+    Args:
+        db: Database session
+        
+    Returns:
+        Statistics about tests, sources, ranges, and distributions
+    """
+    try:
+        stats = stats_service.get_statistics(db)
+        return StatsResponse(**stats)
+    except Exception as e:
+        logger.error(f"Error fetching statistics: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred while fetching statistics: {str(e)}"
         )
 
 @router.get("/")

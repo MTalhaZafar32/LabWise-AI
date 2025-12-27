@@ -8,7 +8,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from app.services.llm_service import llm_service
+# Legacy: Ollama-based LLM (commented out)
+# from app.services.llm_service import llm_service
+
+# Legacy: Gemini API (commented out)
+# from app.services.gemini_service import gemini_service
+
+# Active: OpenAI API (GitHub Models)
+from app.services.openai_service import openai_service
 
 class ParsingService:
     """Service for parsing OCR text into structured lab results"""
@@ -16,15 +23,15 @@ class ParsingService:
     def __init__(self):
         self.medical_utils = MedicalUtils()
     
-    def parse_lab_report(self, ocr_text: str) -> List[Dict[str, any]]:
+    def parse_lab_report(self, ocr_text: str, standard_test_names: Optional[List[str]] = None) -> List[Dict[str, any]]:
         """
         Parse OCR text to extract lab test results using LLM
         """
         results = []
         
-        # Step 1: Use LLM to extract structured data
-        logger.info("Sending OCR text to LLM for extraction...")
-        llm_data = llm_service.extract_structured_data(ocr_text)
+        # Step 1: Use OpenAI (GPT-4o-mini) to extract structured data
+        logger.info("Sending OCR text to OpenAI (GPT-4o-mini) for extraction...")
+        llm_data = openai_service.extract_structured_data(ocr_text, standard_test_names)
         
         if not llm_data:
             logger.warning("LLM returned no structured data")

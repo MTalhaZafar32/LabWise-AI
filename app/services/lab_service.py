@@ -10,7 +10,10 @@ from app.services.ocr_service import ocr_service
 from app.services.parsing_service import parsing_service
 from app.services.rag_service import rag_service
 from app.services.classification_service import classification_service
-from app.services.llm_service import llm_service
+# Legacy: Ollama LLM (commented out)
+# from app.services.llm_service import llm_service
+# Active: OpenAI API (GitHub Models)
+from app.services.openai_service import openai_service
 from app.utils.file_utils import FileUtils
 from app.utils.config import settings
 
@@ -67,9 +70,13 @@ class LabService:
             ocr_text, ocr_confidence = self._extract_text(images)
             logger.info(f"Step 3: OCR took {time.time() - step_start:.2f}s (Confidence: {ocr_confidence:.2f})")
             
-            # Step 4: Parse text to extract test results (LLM Based)
+            # Step 4: Parse text to extract test results (LLM Based with KB Guidance)
             step_start = time.time()
-            parsed_results = parsing_service.parse_lab_report(ocr_text)
+            
+            # Fetch standard test names to assist LLM mapping
+            kb_test_names = rag_service.get_all_test_names(db)
+            
+            parsed_results = parsing_service.parse_lab_report(ocr_text, kb_test_names)
             logger.info(f"Step 4: Parsing took {time.time() - step_start:.2f}s (Parsed: {len(parsed_results)})")
             
             # Note: We proceed even if no results found to return the "0% Match" state as requested
@@ -84,29 +91,44 @@ class LabService:
             classified_results = classification_service.classify_batch(enriched_results)
             logger.info(f"Step 6: Classification took {time.time() - step_start:.2f}s")
             
-            # Step 7: Generate Overall Patient Summary (NEW)
+            # Step 7: Generate Overall Patient Summary & Confidence (OpenAI)
             step_start = time.time()
             
             # Check if we have any valid Knowledge Base matches
             kb_matches = sum(1 for r in classified_results if r.get('kb_found'))
             
+            # Calculate confidence score using OpenAI service
+            confidence_data = openai_service.calculate_confidence(classified_results, kb_matches)
+            
+            # Generate summary using OpenAI (GPT-4o-mini)
             if kb_matches > 0:
-                # Generate AI summary from findings
-                overall_summary = llm_service.generate_final_summary(classified_results)
+                # We have KB data - generate comprehensive summary
+                overall_summary = openai_service.generate_summary(
+                    classified_results,
+                    kb_matched=True,
+                    kb_data=classified_results
+                )
             else:
-                # Fallback summary for 0% match
-                overall_summary = "Unable to identify specific lab tests from our knowledge base. Please contact your doctor interpretation. We do not have data about this specific report format."
+                # No KB match - cautious summary
+                overall_summary = openai_service.generate_summary(
+                    classified_results,
+                    kb_matched=False
+                )
                 
-            # Also generate per-test explanations for the detail view
-            explained_results = llm_service.generate_batch_explanations(classified_results)
+            # Legacy: Ollama per-test explanations (commented out - not needed for new UI)
+            # explained_results = llm_service.generate_batch_explanations(classified_results)
+            explained_results = classified_results  # Skip per-test explanations
+            
             logger.info(f"Step 7: Summarization took {time.time() - step_start:.2f}s")
+            logger.info(f"Confidence: {confidence_data['level']} ({confidence_data['score']})")
             
             # Step 8: Aggregate and format results
             final_results = self._format_results(
                 explained_results,
                 ocr_confidence,
                 ocr_text,
-                overall_summary
+                overall_summary,
+                confidence_data
             )
             
             logger.info(f"Total processing time: {time.time() - overall_start:.2f}s")
@@ -140,7 +162,8 @@ class LabService:
         results: List[Dict],
         ocr_confidence: float,
         ocr_text: str,
-        overall_summary: str
+        overall_summary: str,
+        confidence_data: Dict
     ) -> Dict:
         """Format final results for API response"""
         
@@ -191,7 +214,10 @@ class LabService:
             'overall_summary': overall_summary,
             'confidence': {
                 'ocr_confidence': round(ocr_confidence, 2),
-                'confidence_level': confidence_level
+                'ocr_level': confidence_level,
+                'response_confidence': confidence_data['score'],
+                'response_level': confidence_data['level'],
+                'confidence_source': confidence_data['source']
             },
             'tests': formatted_tests,
             'disclaimer': (

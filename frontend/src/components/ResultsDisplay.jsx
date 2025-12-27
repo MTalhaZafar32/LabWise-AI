@@ -12,120 +12,68 @@ const ResultsDisplay = ({ results }) => {
         );
     }
 
-    const { summary, confidence, tests, disclaimer } = results;
+    const { summary, confidence, disclaimer, overall_summary } = results;
 
-    const getClassificationColor = (classification) => {
-        switch (classification) {
-            case 'LOW':
-                return '#3b82f6'; // Blue
-            case 'NORMAL':
-                return '#10b981'; // Green
+    const getConfidenceColor = (level) => {
+        switch (level) {
             case 'HIGH':
+                return '#10b981'; // Green
+            case 'MEDIUM':
+                return '#f59e0b'; // Amber
+            case 'LOW':
                 return '#ef4444'; // Red
             default:
                 return '#6b7280'; // Gray
         }
     };
 
-    const getConfidenceColor = (level) => {
-        switch (level) {
-            case 'HIGH':
-                return '#10b981';
-            case 'MEDIUM':
-                return '#f59e0b';
-            case 'LOW':
-                return '#ef4444';
-            default:
-                return '#6b7280';
-        }
-    };
-
     return (
         <div className="results-container">
-            {/* Summary Cards */}
+            {/* Header Section with Confidence Scores */}
             <div className="summary-grid">
+                {/* KB Match Rate */}
                 <div className="summary-card">
-                    <div className="summary-icon">🧪</div>
+                    <div className="summary-icon">📚</div>
                     <div className="summary-content">
-                        <div className="summary-value">{summary.total_tests}</div>
-                        <div className="summary-label">Total Tests</div>
-                    </div>
-                </div>
-
-                <div className="summary-card">
-                    <div className="summary-icon">📊</div>
-                    <div className="summary-content">
-                        <div className="summary-value">{summary.kb_match_rate}</div>
+                        <div className="summary-value" style={{ color: '#3b82f6' }}>
+                            {summary?.kb_match_rate || '0%'}
+                        </div>
                         <div className="summary-label">KB Match Rate</div>
                     </div>
                 </div>
 
+                {/* Response Confidence */}
                 <div className="summary-card">
-                    <div className="summary-icon">🎯</div>
+                    <div className="summary-icon">🧠</div>
                     <div className="summary-content">
-                        <div className="summary-value" style={{ color: getConfidenceColor(confidence.confidence_level) }}>
-                            {confidence.confidence_level}
+                        <div className="summary-value" style={{ color: getConfidenceColor(confidence?.response_level) }}>
+                            {confidence?.response_confidence ? `${(confidence.response_confidence * 100).toFixed(0)}%` : 'N/A'}
+                        </div>
+                        <div className="summary-label">AI Confidence</div>
+                    </div>
+                </div>
+
+                {/* OCR Confidence */}
+                <div className="summary-card">
+                    <div className="summary-icon">👁️</div>
+                    <div className="summary-content">
+                        <div className="summary-value" style={{ color: getConfidenceColor(confidence?.ocr_level) }}>
+                            {confidence?.ocr_confidence ? `${(confidence.ocr_confidence * 100).toFixed(0)}%` : 'N/A'}
                         </div>
                         <div className="summary-label">OCR Confidence</div>
                     </div>
                 </div>
-
-                <div className="summary-card">
-                    <div className="summary-icon">✅</div>
-                    <div className="summary-content">
-                        <div className="summary-value">{summary.normal_results}</div>
-                        <div className="summary-label">Normal Results</div>
-                    </div>
-                </div>
             </div>
 
-            {/* Test Results */}
+            {/* Main Summary Section */}
             <div className="tests-section">
-                <h2 className="section-title">Test Results</h2>
-
-                <div className="tests-grid">
-                    {tests.map((test, index) => (
-                        <div key={index} className="test-card">
-                            <div className="test-header">
-                                <div className="test-name-section">
-                                    <h3 className="test-name">{test.test_name}</h3>
-                                    {test.panel_name && (
-                                        <span className="panel-badge">{test.panel_name}</span>
-                                    )}
-                                </div>
-                                <span
-                                    className="classification-badge"
-                                    style={{ backgroundColor: getClassificationColor(test.classification) }}
-                                >
-                                    {test.classification}
-                                </span>
-                            </div>
-
-                            <div className="test-value-section">
-                                <div className="test-value">
-                                    {test.value} <span className="test-unit">{test.unit}</span>
-                                </div>
-                                <div className="test-reference">
-                                    Reference: {test.reference_range}
-                                </div>
-                            </div>
-
-                            {test.ai_explanation && (
-                                <div className="test-explanation">
-                                    <div className="explanation-icon">💡</div>
-                                    <p>{test.ai_explanation}</p>
-                                </div>
-                            )}
-
-                            <div className="test-footer">
-                                {test.kb_found ? (
-                                    <span className="kb-badge kb-found">✓ In Knowledge Base</span>
-                                ) : (
-                                    <span className="kb-badge kb-not-found">⚠ Not in KB</span>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                <h2 className="section-title">Analysis Summary</h2>
+                <div className="test-card" style={{ padding: '2rem' }}>
+                    <div className="test-explanation" style={{ marginTop: 0, backgroundColor: 'transparent', padding: 0 }}>
+                        <p style={{ fontSize: '1.1rem', lineHeight: '1.8', color: '#e2e8f0' }}>
+                            {overall_summary || 'No summary available'}
+                        </p>
+                    </div>
                 </div>
             </div>
 

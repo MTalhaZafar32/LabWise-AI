@@ -42,6 +42,18 @@ export const api = {
 
         return response.data;
     },
+
+    /**
+     * Get knowledge base statistics
+     */
+    async getStatistics() {
+        const response = await apiClient.get('/stats', {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        return response.data;
+    },
 };
 
 export default api;

@@ -1,299 +1,318 @@
 # LabWise AI 🧬
 
-**Autonomous Medical Lab Report Interpretation Agent**
+**Autonomous Medical Lab Report Interpreter**
 
-LabWise AI is an offline, privacy-preserving AI system that interprets medical laboratory reports and generates human-readable explanations for non-technical users.
+LabWise AI is an offline, privacy-preserving AI system that interprets medical laboratory reports (PDF or images) and generates human-readable explanations with confidence scoring based on a comprehensive knowledge base.
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Python](https://img.shields.io/badge/python-3.11-green)
+![License](https://img.shields.io/badge/license-MIT-orange)
+
+---
 
 ## 🌟 Features
 
-- **OCR Extraction**: Converts PDF and image lab reports to structured data using PaddleOCR
-- **Knowledge Base Integration**: Matches tests against a comprehensive medical reference database
-- **Rule-Based Classification**: Deterministic LOW/NORMAL/HIGH classification for medical safety
-- **AI Explanations**: Local LLM (Phi-3 Mini via Ollama) generates clear, non-technical explanations
-- **Privacy-First**: All processing happens locally - no data leaves your device
-- **Confidence Scoring**: Transparent OCR confidence and KB matching indicators
-- **Modern UI**: Beautiful, responsive React interface with real-time analysis
+- **📄 Multi-Format Support**: Process PDFs and images (PNG, JPG, JPEG)
+- **🔍 OCR Extraction**: EasyOCR for accurate text extraction
+- **🧠 AI-Powered Analysis**: OpenAI GPT-4o-mini for intelligent interpretation
+- **📊 Knowledge Base**: 1000+ medical tests with reference ranges from trusted sources
+- **🎯 Smart Classification**: Automatic LOW/NORMAL/HIGH classification
+- **💯 Confidence Scoring**: Dynamic confidence based on KB data quality
+- **🔒 Privacy-First**: All processing happens locally (except OpenAI API calls)
+- **📈 Statistics Dashboard**: View comprehensive KB statistics
+
+---
 
 ## 🏗️ Architecture
 
-### Backend (FastAPI + Python)
-- **API Layer**: REST endpoints for file upload and analysis
-- **Service Layer**: OCR, Parsing, RAG, Classification, LLM services
-- **Database Layer**: SQLite with medical knowledge base
-- **Clean Architecture**: Separation of concerns, modular components
+### Technology Stack
 
-### Frontend (React + Vite)
-- **File Upload**: Drag-and-drop interface for PDF/images
-- **Results Display**: Interactive cards showing test results and explanations
-- **Real-time Progress**: Upload and processing status indicators
+**Backend:**
+- **Framework**: FastAPI + Uvicorn
+- **Database**: SQLite with SQLAlchemy ORM
+- **OCR**: EasyOCR
+- **LLM**: OpenAI GPT-4o-mini (via Langchain)
+- **PDF Processing**: pdf2image + Pillow
 
-### Knowledge Base
-- **Tests**: 200+ laboratory tests with canonical definitions
-- **Reference Ranges**: Multi-source, sex/age-specific ranges
-- **Synonyms**: Alternate test names for robust matching
-- **Sources**: Trust-level based reference prioritization
+**Frontend:**
+- **Framework**: React 18 + Vite
+- **Styling**: Vanilla CSS with modern design
+- **HTTP Client**: Axios
 
-## 📋 Prerequisites
+### Processing Pipeline
 
-- **Python**: 3.9 or higher
-- **Node.js**: 16 or higher
-- **Ollama**: For local LLM (optional but recommended)
-- **Poppler**: For PDF processing (required for PDF support)
+```
+PDF/Image → OCR (EasyOCR) → LLM Extraction (OpenAI) → RAG Lookup (KB) 
+→ Classification (Rule-based) → Summary Generation (OpenAI) → Results
+```
 
-## 🚀 Installation
+---
 
-### 1. Clone the Repository
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Python 3.11+**
+- **Node.js 18+** and npm
+- **OpenAI API Key** (GitHub Models or OpenAI)
+
+### 1. Clone Repository
 
 ```bash
-cd Labwise-ai
+git clone https://github.com/yourusername/labwise-ai.git
+cd labwise-ai
 ```
 
 ### 2. Backend Setup
 
-```bash
+```powershell
 # Create virtual environment
 python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
+.\venv\Scripts\Activate.ps1
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Initialize database
+# Configure environment
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
+```
+
+### 3. Initialize Database
+
+```powershell
+# Load knowledge base data
 python -m app.db.init_db
 ```
 
-### 3. Frontend Setup
+### 4. Frontend Setup
 
-```bash
+```powershell
 cd frontend
 npm install
+cd ..
 ```
 
-### 4. Install Ollama (Optional but Recommended)
+### 5. Run Application
 
-Download and install Ollama from [https://ollama.ai](https://ollama.ai)
-
-```bash
-# Pull Phi-3 Mini model
-ollama pull phi3:mini
+**Option A: Run All (Recommended)**
+```powershell
+.\run-all.ps1
 ```
 
-### 5. Install Poppler (For PDF Support)
+**Option B: Run Separately**
+```powershell
+# Terminal 1: Backend
+.\run-backend.ps1
 
-**Windows:**
-- Download from: https://github.com/oschwartz10612/poppler-windows/releases
-- Add to PATH
-
-**Linux:**
-```bash
-sudo apt-get install poppler-utils
+# Terminal 2: Frontend
+.\run-frontend.ps1
 ```
 
-**Mac:**
-```bash
-brew install poppler
-```
+### 6. Access Application
 
-## 🎯 Usage
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
 
-### Start Backend Server
-
-```bash
-# From project root
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Backend will be available at: `http://localhost:8000`
-API Documentation: `http://localhost:8000/docs`
-
-### Start Frontend Development Server
-
-```bash
-# From frontend directory
-cd frontend
-npm run dev
-```
-
-Frontend will be available at: `http://localhost:5173`
-
-### Using the Application
-
-1. Open `http://localhost:5173` in your browser
-2. Upload a lab report (PDF or image)
-3. Wait for analysis to complete
-4. View results with classifications and AI explanations
+---
 
 ## 📁 Project Structure
 
 ```
 labwise-ai/
-├── app/                      # Backend application
-│   ├── api/                  # API routes and models
-│   ├── services/             # Business logic services
-│   │   ├── ocr_service.py    # OCR extraction
-│   │   ├── parsing_service.py # Text parsing
-│   │   ├── rag_service.py    # Knowledge base retrieval
-│   │   ├── classification_service.py # Rule-based classification
-│   │   ├── llm_service.py    # LLM explanation generation
-│   │   └── lab_service.py    # Main orchestration
-│   ├── db/                   # Database models and initialization
-│   ├── utils/                # Utilities and configuration
-│   └── main.py               # FastAPI application
-├── frontend/                 # React frontend
+├── app/                        # Backend application
+│   ├── api/                    # API routes and models
+│   ├── db/                     # Database models and initialization
+│   ├── services/               # Core services
+│   │   ├── ocr_service.py      # EasyOCR integration
+│   │   ├── openai_service.py   # OpenAI/LLM integration
+│   │   ├── parsing_service.py  # Data extraction
+│   │   ├── rag_service.py      # Knowledge base retrieval
+│   │   ├── classification_service.py  # Result classification
+│   │   └── stats_service.py    # Statistics generation
+│   ├── utils/                  # Utilities
+│   └── main.py                 # FastAPI application
+├── frontend/                   # React frontend
 │   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── services/         # API client
-│   │   ├── App.jsx           # Main app component
-│   │   └── main.jsx          # Entry point
+│   │   ├── components/         # React components
+│   │   ├── pages/              # Page components
+│   │   ├── services/           # API client
+│   │   └── App.jsx             # Main app component
 │   └── package.json
-├── Knowladge-base/           # Medical reference data (CSV files)
-├── data/                     # SQLite database (generated)
-├── requirements.txt          # Python dependencies
-└── README.md
+├── Knowladge-base/             # KB source data (CSV files)
+├── data/                       # SQLite database
+├── requirements.txt            # Python dependencies
+├── .env.example                # Environment template
+└── README.md                   # This file
 ```
-
-## 🔧 Configuration
-
-Create a `.env` file in the project root (optional):
-
-```env
-# LLM Settings
-OLLAMA_BASE_URL=http://localhost:11434
-LLM_MODEL=phi3:mini
-
-# OCR Settings
-OCR_CONFIDENCE_THRESHOLD=0.7
-USE_GPU=False
-
-# File Upload
-MAX_UPLOAD_SIZE=10485760  # 10MB
-```
-
-## 🧪 API Endpoints
-
-### Health Check
-```
-GET /api/health
-```
-
-### Analyze Lab Report
-```
-POST /api/analyze
-Content-Type: multipart/form-data
-Body: file (PDF or image)
-```
-
-Response:
-```json
-{
-  "success": true,
-  "summary": {
-    "total_tests": 10,
-    "kb_matched": 9,
-    "normal_results": 7,
-    "high_results": 2,
-    "low_results": 1
-  },
-  "confidence": {
-    "ocr_confidence": 0.92,
-    "confidence_level": "HIGH"
-  },
-  "tests": [
-    {
-      "test_name": "Hemoglobin",
-      "value": 11.2,
-      "unit": "g/dL",
-      "classification": "LOW",
-      "reference_range": "13.0 - 17.0 g/dL",
-      "ai_explanation": "...",
-      "kb_found": true
-    }
-  ],
-  "disclaimer": "..."
-}
-```
-
-## 🔒 Privacy & Security
-
-- **Offline Processing**: All OCR, classification, and LLM processing happens locally
-- **No External APIs**: No data is sent to cloud services
-- **Local Database**: Knowledge base stored in local SQLite
-- **Medical Safety**: Rule-based classification ensures deterministic results
-- **Transparency**: Confidence scores and KB matching indicators
-
-## ⚠️ Medical Disclaimer
-
-**IMPORTANT**: LabWise AI is for informational and educational purposes only. It does NOT:
-- Provide medical diagnosis
-- Replace professional medical advice
-- Recommend treatments or medications
-- Substitute for consultation with healthcare providers
-
-Always consult qualified healthcare professionals for medical decisions.
-
-## 🛠️ Development
-
-### Run Tests
-```bash
-pytest tests/
-```
-
-### Code Quality
-```bash
-# Format code
-black app/
-
-# Lint
-flake8 app/
-```
-
-### Build Frontend for Production
-```bash
-cd frontend
-npm run build
-```
-
-## 📚 Technology Stack
-
-### Backend
-- **FastAPI**: Modern Python web framework
-- **PaddleOCR**: OCR engine
-- **OpenCV**: Image preprocessing
-- **SQLAlchemy**: ORM for database
-- **Ollama**: Local LLM inference
-- **pdf2image**: PDF conversion
-
-### Frontend
-- **React**: UI framework
-- **Vite**: Build tool
-- **Axios**: HTTP client
-
-## 🤝 Contributing
-
-This is an educational project. Contributions are welcome!
-
-## 📄 License
-
-This project is for educational and research purposes.
-
-## 🙏 Acknowledgments
-
-- Knowledge base compiled from clinical references
-- Built with modern AI/ML technologies
-- Designed for privacy and medical safety
-
-## 📞 Support
-
-For issues or questions, please check:
-- API Documentation: `http://localhost:8000/docs`
-- Project structure and code comments
-- Architecture documentation
 
 ---
 
-**Built with ❤️ for safer, more accessible healthcare information**
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# OpenAI Configuration
+OPENAI_API_KEY=your_api_key_here
+OPENAI_BASE_URL=https://models.inference.ai.azure.com  # Or https://api.openai.com/v1
+OPENAI_EXTRACTION_MODEL=gpt-4o-mini
+OPENAI_SUMMARY_MODEL=gpt-4o-mini
+
+# Application Settings
+APP_VERSION=1.0.0
+DEBUG=False
+MAX_UPLOAD_SIZE=10485760  # 10MB
+
+# Database
+DATABASE_URL=sqlite:///./data/labwise.db
+
+# CORS
+CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+```
+
+### OpenAI API Key Options
+
+1. **GitHub Models** (Free for development):
+   - Get token from: https://github.com/settings/tokens
+   - Set `OPENAI_BASE_URL=https://models.inference.ai.azure.com`
+
+2. **OpenAI** (Paid):
+   - Get API key from: https://platform.openai.com/api-keys
+   - Set `OPENAI_BASE_URL=https://api.openai.com/v1`
+
+---
+
+## 📊 Knowledge Base
+
+The system includes a comprehensive medical knowledge base with:
+
+- **1,000+ Medical Tests**: Complete Blood Count, Metabolic Panels, Lipid Profiles, etc.
+- **10,000+ Reference Ranges**: Age, sex, and condition-specific ranges
+- **5,000+ Test Synonyms**: Alternative names and abbreviations
+- **Trusted Sources**: Mayo Clinic, LabCorp, Quest Diagnostics, WHO, NIH
+
+### KB Statistics
+
+View real-time statistics at: http://localhost:5173/ → "View KB Statistics"
+
+---
+
+## 🔬 How It Works
+
+### 1. OCR Extraction
+- **EasyOCR** extracts text from uploaded PDF/image
+- Confidence score calculated based on OCR quality
+
+### 2. LLM-Based Parsing
+- **OpenAI GPT-4o-mini** extracts structured test data
+- Guided by KB test names for accurate mapping
+
+### 3. Knowledge Base Lookup (RAG)
+- Searches KB for each test by canonical name or synonym
+- Retrieves reference ranges with source trust levels
+
+### 4. Classification
+- Rule-based classification: LOW/NORMAL/HIGH/UNKNOWN
+- Based on KB reference ranges
+
+### 5. Confidence Scoring
+- **With KB Data**: Calculated from source trust_level (1-5) and source_priority (1-5)
+- **Without KB Data**: Randomized base score (40-50%)
+- **Dynamic**: Varies with each request based on data quality
+
+### 6. Summary Generation
+- **OpenAI GPT-4o-mini** generates patient-friendly summary
+- Different prompts for KB-matched vs non-matched tests
+- Plain text output (no markdown formatting)
+
+---
+
+## 🧪 Testing
+
+### Test with Sample Report
+
+1. Navigate to http://localhost:5173
+2. Upload a lab report (PDF or image)
+3. Wait for analysis (~60-90 seconds for first run)
+4. View results with confidence scores
+
+### API Testing
+
+```bash
+# Health check
+curl http://localhost:8000/api/health
+
+# Get KB statistics
+curl http://localhost:8000/api/stats
+
+# Analyze report
+curl -X POST http://localhost:8000/api/analyze \
+  -F "file=@path/to/report.pdf"
+```
+
+---
+
+## 📈 Performance
+
+- **OCR Processing**: 60-80 seconds (first run), 20-30 seconds (subsequent)
+- **LLM Extraction**: 3-7 seconds
+- **KB Lookup**: <0.1 seconds
+- **Summary Generation**: 3-6 seconds
+- **Total**: ~70-90 seconds (first run), ~30-45 seconds (subsequent)
+
+---
+
+## 🛡️ Privacy & Security
+
+- **Local Processing**: OCR and classification happen locally
+- **API Calls**: Only OpenAI API calls leave your system
+- **No Data Storage**: Uploaded files are not stored permanently
+- **Medical Disclaimer**: Always included in results
+
+---
+
+## ⚠️ Medical Disclaimer
+
+**IMPORTANT**: This tool is for informational purposes only and does NOT constitute medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional for medical decisions.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+---
+
+## 📝 License
+
+MIT License - see LICENSE file for details
+
+---
+
+## 🙏 Acknowledgments
+
+- **Knowledge Base Sources**: Mayo Clinic, LabCorp, Quest Diagnostics, WHO, NIH
+- **OCR**: EasyOCR team
+- **LLM**: OpenAI GPT-4o-mini
+- **Framework**: FastAPI and React communities
+
+---
+
+## 📞 Support
+
+For issues or questions:
+- Open an issue on GitHub
+- Check the API documentation at `/docs`
+
+---
+
+**Built with ❤️ for better healthcare accessibility**

@@ -1,479 +1,583 @@
-# LabWise AI  
-## An Autonomous Medical Lab Report Interpretation Agent  
-**End-to-End Technical Documentation (GenAI + AI Agents)**
+# LabWise AI - System Architecture
+
+## Overview
+
+LabWise AI is a medical lab report interpretation system that combines OCR, AI-powered analysis, and a comprehensive knowledge base to provide accurate, confidence-scored interpretations of laboratory test results.
 
 ---
 
-## 1. Introduction
-
-LabWise AI is an **offline, privacy-preserving, autonomous AI agent system** designed to interpret medical laboratory reports (PDF or images) and generate **human-readable explanations** for non-technical users.
-
-The system integrates:
-- OCR
-- Rule-based medical logic
-- Retrieval-Augmented Generation (RAG)
-- Local Generative AI
-- Agent-based orchestration
-
-This document explains **every architectural layer, workflow, decision, and implementation responsibility in depth**, following **industry standards**.
-
----
-
-## 2. Design Goals
-
-- Offline-first (no cloud dependency)
-- Privacy-safe (medical data never leaves the device)
-- Deterministic medical reasoning
-- Transparent confidence & knowledge usage
-- Modular & replaceable components
-- Industry-grade backend & frontend separation
-
----
-
-## 3. High-Level System Overview
-
-LabWise AI transforms **raw lab reports** into **clear health explanations** through a **multi-stage AI agent pipeline**.
-
-### Supported Inputs
-- PDF lab reports
-- Image-based lab reports (`.png`, `.jpg`, `.jpeg`)
-
-### Final Outputs
-- Structured lab result table
-- LOW / NORMAL / HIGH classification
-- AI-generated explanation
-- Confidence score
-- Knowledge Base usage indicator
-- Medical safety disclaimer
-
----
-
-## 4. High-Level Architecture
+## System Architecture Diagram
 
 ```
-User (React UI)
-↓
-FastAPI Backend
-↓
-Agent-Orchestrated Pipeline
-↓
-OCR → Parsing → KB Lookup → Classification → LLM Explanation
-↓
-Structured + Explained Medical Report
+┌─────────────────────────────────────────────────────────────────┐
+│                         USER INTERFACE                          │
+│                     (React + Vite Frontend)                     │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ HTTP/REST
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                         API LAYER                               │
+│                      (FastAPI Backend)                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │   /analyze   │  │   /health    │  │    /stats    │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    PROCESSING PIPELINE                          │
+│                                                                 │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   │
+│  │   OCR    │──▶│   LLM    │──▶│   RAG    │──▶│  Class.  │   │
+│  │ EasyOCR  │   │  OpenAI  │   │    KB    │   │  Rules   │   │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────┘   │
+│                                                                 │
+│                         ┌──────────┐                           │
+│                         │   LLM    │                           │
+│                         │ Summary  │                           │
+│                         └──────────┘                           │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      DATA LAYER                                 │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │              SQLite Knowledge Base                       │  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐ │  │
+│  │  │  Tests   │  │  Ranges  │  │ Synonyms │  │ Sources  │ │  │
+│  │  │  1000+   │  │  10000+  │  │  5000+   │  │   50+    │ │  │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘ │  │
+│  └─────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
-The system is **agent-driven**, meaning each step is planned, validated, and executed autonomously.
 
 ---
 
-## 5. Three-Layer Backend Architecture
+## Technology Stack
 
-### 5.1 API Layer (FastAPI)
+### Backend
 
-**Purpose:**  
-Expose REST endpoints only.  
-❌ No business logic  
-❌ No OCR  
-❌ No LLM calls  
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Web Framework** | FastAPI 0.109 | REST API, async support |
+| **Server** | Uvicorn | ASGI server |
+| **Database** | SQLite + SQLAlchemy | Knowledge base storage |
+| **OCR** | EasyOCR 1.7 | Text extraction from images/PDFs |
+| **LLM** | OpenAI GPT-4o-mini | Data extraction & summarization |
+| **LLM Framework** | Langchain | LLM integration |
+| **PDF Processing** | pdf2image + Pillow | PDF to image conversion |
+| **Image Processing** | OpenCV | Image preprocessing |
+| **Data Processing** | Pandas + NumPy | Data manipulation |
 
-Example:
+### Frontend
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **Framework** | React 18 | UI components |
+| **Build Tool** | Vite | Fast development & bundling |
+| **Styling** | Vanilla CSS | Custom styling |
+| **HTTP Client** | Axios | API communication |
+
+---
+
+## Core Services
+
+### 1. OCR Service (`ocr_service.py`)
+
+**Purpose**: Extract text from uploaded PDF/image files
+
+**Technology**: EasyOCR
+
+**Process**:
+1. Convert PDF to images (if needed)
+2. Preprocess images (resize, enhance)
+3. Run EasyOCR text detection
+4. Calculate confidence score
+5. Return extracted text + confidence
+
+**Output**:
 ```python
-@router.post("/analyze")
-def analyze_lab_report(file: UploadFile):
-    return lab_service.process_report(file)
+{
+    "text": "COMPLETE BLOOD COUNT\nWBC: 7.5...",
+    "confidence": 0.91
+}
 ```
 
 ---
 
-### 5.2 Service Layer (Business & AI Logic)
+### 2. Parsing Service (`parsing_service.py`)
 
-**Purpose:**
-Contains **all application logic**.
+**Purpose**: Extract structured test data from OCR text
 
-Responsibilities:
+**Technology**: OpenAI GPT-4o-mini via Langchain
 
-* OCR execution
-* Parsing
-* Classification
-* RAG retrieval
-* LLM prompting
-* Confidence scoring
+**Process**:
+1. Receive OCR text + KB test names
+2. Send to OpenAI with structured extraction prompt
+3. LLM identifies test names, values, units, ranges
+4. Parse JSON response
+5. Return structured test list
 
-Example flow:
+**Input Prompt**:
+```
+Extract lab tests from this OCR text:
+- Test name, value, unit, reference range
+- Map to standard names if possible: [Hemoglobin, WBC, RBC...]
+- Return JSON array
+```
 
+**Output**:
 ```python
-def process_report(file):
-    text, conf = ocr_service.extract_text(file)
-    structured = parsing_service.parse(text)
-    classified = classification_service.classify(structured)
-    explanation = explanation_service.generate(classified)
-    return explanation
+[
+    {
+        "test_name": "Hemoglobin",
+        "value": 14.5,
+        "unit": "g/dL",
+        "reference_range": "13.5-17.5"
+    },
+    ...
+]
 ```
 
 ---
 
-### 5.3 Core / Infrastructure Layer
+### 3. RAG Service (`rag_service.py`)
 
-**Purpose:**
-Implements reusable, replaceable system components.
+**Purpose**: Retrieve reference ranges from knowledge base
 
-Includes:
+**Technology**: SQLAlchemy + SQLite
 
-* OCR engines
-* LLM clients
-* Databases
-* RAG retrievers
-* Agent planners
+**Process**:
+1. Normalize test name
+2. Search KB by canonical name, short name, or synonym
+3. Retrieve best reference range (by source priority & trust level)
+4. Return KB info with trust_level and source_priority
 
----
-
-## 6. Complete Backend Folder Structure
-
-```
-labwise-ai/
-├── app/
-│   ├── main.py
-│   ├── api/
-│   ├── services/
-│   ├── agents/
-│   ├── models/
-│   ├── db/
-│   ├── rag/
-│   ├── llm/
-│   ├── ocr/
-│   └── utils/
-├── data/
-│   └── labqar/
-├── tests/
-└── docker-compose.yml
+**Search Strategy**:
+```python
+1. Exact match on canonical_name
+2. Fuzzy match on short_name
+3. Synonym lookup
+4. Return None if not found
 ```
 
-Each folder has **one responsibility only**, following Clean Architecture.
-
----
-
-## 7. End-to-End Processing Pipeline (Detailed)
-
-### Step 1: File Upload (React UI)
-
-* User uploads PDF or image
-* Client-side validation (type, size)
-* File sent to FastAPI via multipart/form-data
-
----
-
-### Step 2: File Validation (Backend)
-
-* MIME type validation
-* File integrity check
-* Unsupported formats rejected
-
----
-
-### Step 3: PDF to Image Conversion (If PDF)
-
-**Why:** OCR performs better on images.
-
-Process:
-
-* Convert each PDF page → image
-* Normalize resolution
-* Temporary in-memory storage
-
----
-
-### Step 4: Image Preprocessing
-
-Using OpenCV:
-
-* Grayscale conversion
-* Noise removal
-* Contrast enhancement
-* Table boundary improvement
-
-Goal: maximize OCR accuracy.
-
----
-
-### Step 5: OCR Extraction + Confidence Scoring
-
-**Tool:** PaddleOCR (CPU)
-
-Output:
-
-```json
+**Output**:
+```python
 {
-  "text": "Hemoglobin 11.2 g/dL",
-  "confidence": 0.92
-}
-```
-
-* Average confidence computed
-* If below threshold → retry or warn user
-
----
-
-### Step 6: Parsing & Normalization
-
-Extracts:
-
-* Test name
-* Numeric value
-* Unit
-
-Techniques:
-
-* Regex rules
-* Medical synonym mapping
-* Unit normalization
-
-Example:
-
-```json
-{
-  "test_name": "Hemoglobin",
-  "value": 11.2,
-  "unit": "g/dL"
+    "test_id": 123,
+    "canonical_name": "Hemoglobin A1c",
+    "reference_range": {
+        "ref_low": 4.0,
+        "ref_high": 5.6,
+        "unit": "%",
+        "trust_level": 5,
+        "source_priority": 1
+    },
+    "kb_found": True
 }
 ```
 
 ---
 
-### Step 7: Knowledge Base Lookup (RAG)
+### 4. Classification Service (`classification_service.py`)
 
-**Storage:** SQLite
-**Source:** LabQAR dataset + curated medical references
+**Purpose**: Classify test results as LOW/NORMAL/HIGH
 
-Decision logic:
+**Technology**: Rule-based logic
 
-```
-IF test found in KB:
-    use verified reference range
-    kb_used = true
-ELSE:
-    kb_used = false
-    safe fallback explanation
-```
+**Process**:
+1. Check if KB reference range exists
+2. Compare value to ref_low and ref_high
+3. Assign classification
+4. Return enriched result
 
-This prevents hallucination.
-
----
-
-### Step 8: Rule-Based Classification
-
-**Not handled by LLM**
-
-Logic:
-
-```
-value < lower_bound → LOW
-value > upper_bound → HIGH
-else → NORMAL
+**Classification Logic**:
+```python
+if value < ref_low:
+    classification = "LOW"
+elif value > ref_high:
+    classification = "HIGH"
+else:
+    classification = "NORMAL"
 ```
 
-This ensures:
-
-* Deterministic behavior
-* Medical safety
-* Explainability
-
----
-
-### Step 9: Prompt Construction
-
-Prompt includes:
-
-* Test name
-* Value
-* Reference range
-* Classification
-* OCR confidence
-* Safety constraints
-
-Example:
-
-```
-Explain in simple language:
-Test: Hemoglobin
-Value: 11.2 g/dL
-Range: 13–17
-Status: LOW
-Do NOT provide diagnosis.
-```
-
----
-
-### Step 10: LLM Reasoning (Offline)
-
-**Model:** Phi-3 Mini (via Ollama)
-
-Used ONLY for:
-
-* Explanation
-* Summarization
-* Guidance (non-diagnostic)
-
-Not used for:
-
-* Classification
-* Medical decision logic
-
----
-
-### Step 11: Result Aggregation
-
-Merged output includes:
-
-* Numeric results
-* Classification
-* AI explanation
-* Confidence score
-* KB usage flag
-* Disclaimer
-
----
-
-### Step 12: Response to Frontend
-
-```json
+**Output**:
+```python
 {
-  "test": "Hemoglobin",
-  "value": "11.2 g/dL",
-  "status": "LOW",
-  "reference_range": "13–17",
-  "confidence_score": 0.91,
-  "kb_used": true,
-  "ai_summary": "Low hemoglobin may indicate...",
-  "disclaimer": "This is not a medical diagnosis."
+    "test_name": "Hemoglobin",
+    "value": 14.5,
+    "unit": "g/dL",
+    "classification": "NORMAL",
+    "reference_range": "13.5-17.5",
+    "kb_found": True
 }
 ```
 
 ---
 
-## 8. React Frontend Architecture
+### 5. OpenAI Service (`openai_service.py`)
 
-### Goals
+**Purpose**: LLM-powered extraction and summarization
 
-* Simple for non-technical users
-* Transparent results
-* Clear confidence indicators
+**Technology**: OpenAI GPT-4o-mini via Langchain
 
-### Structure
+**Functions**:
+
+#### A. Data Extraction
+- Extract structured test data from OCR text
+- Map to standard test names using KB guidance
+- Return JSON array of tests
+
+#### B. Summary Generation
+- Generate patient-friendly summary
+- Two modes:
+  - **With KB data**: Comprehensive summary with classifications
+  - **Without KB data**: Cautious summary emphasizing professional review
+- Plain text output (no markdown)
+
+#### C. Confidence Calculation
+- **With KB matches**: 
+  - Calculate from trust_level (1-5) and source_priority (1-5)
+  - Normalize to 0-1 scale
+  - Add randomization (±5%)
+  - Blend KB match rate with quality score
+- **Without KB matches**:
+  - Randomized base score (0.40-0.50)
+
+**Confidence Formula**:
+```python
+# Normalize trust level (1-5 → 0-1)
+trust_score = (trust_level - 1) / 4.0
+
+# Normalize source priority (1-5 → 0-1, inverted)
+priority_score = (6 - source_priority) / 5.0
+
+# Weighted combination
+test_score = (trust_score * 0.6) + (priority_score * 0.4)
+
+# Add randomization
+test_score += random.uniform(-0.05, 0.05)
+
+# Final score
+final_score = (kb_match_rate * 0.4) + (avg_score * 0.6)
+final_score = max(0.20, final_score)  # Minimum 20%
+```
+
+---
+
+### 6. Lab Service (`lab_service.py`)
+
+**Purpose**: Orchestrate the entire processing pipeline
+
+**Process**:
+```
+1. Validate file (size, format)
+2. Convert PDF to images
+3. Extract text via OCR
+4. Parse text via LLM
+5. Lookup tests in KB (RAG)
+6. Classify results
+7. Generate summary via LLM
+8. Calculate confidence
+9. Format and return results
+```
+
+**Pipeline Timing** (typical):
+- Validation: <0.01s
+- Image preparation: 2-5s
+- OCR: 60-80s (first run), 20-30s (cached)
+- Parsing: 3-7s
+- RAG lookup: <0.1s
+- Classification: <0.01s
+- Summarization: 3-6s
+- **Total**: ~70-90s (first run), ~30-45s (subsequent)
+
+---
+
+### 7. Stats Service (`stats_service.py`)
+
+**Purpose**: Generate knowledge base statistics
+
+**Metrics**:
+- Total tests, sources, ranges, synonyms
+- Distribution by category, panel, source type
+- Top sources by range count
+- LOINC coverage percentage
+- Average synonyms per test
+
+---
+
+## Database Schema
+
+### Tables
+
+#### 1. `tests`
+```sql
+test_id          INTEGER PRIMARY KEY
+canonical_name   STRING (indexed)
+short_name       STRING
+panel_name       STRING
+specimen_type    STRING
+category         STRING
+loinc_code       STRING
+description      TEXT
+```
+
+#### 2. `sources`
+```sql
+source_id     INTEGER PRIMARY KEY
+name          STRING
+type          STRING
+url           STRING
+year          INTEGER
+trust_level   INTEGER  -- 1-5 (5 = highest trust)
+```
+
+#### 3. `ranges`
+```sql
+range_id         INTEGER PRIMARY KEY
+test_id          INTEGER (FK → tests)
+source_id        INTEGER (FK → sources)
+canonical_name   STRING
+unit             STRING
+value_type       STRING
+ref_low          FLOAT
+ref_high         FLOAT
+ref_text         STRING
+sex              STRING
+age_min          FLOAT
+age_max          FLOAT
+condition        STRING
+source_priority  INTEGER  -- 1-5 (1 = highest priority)
+effective_year   INTEGER
+```
+
+#### 4. `synonyms`
+```sql
+synonym_id   INTEGER PRIMARY KEY
+test_id      INTEGER (FK → tests)
+synonym      STRING (indexed)
+source_id    INTEGER
+```
+
+---
+
+## API Endpoints
+
+### 1. `GET /api/health`
+
+**Purpose**: Health check
+
+**Response**:
+```json
+{
+    "status": "healthy",
+    "version": "1.0.0"
+}
+```
+
+---
+
+### 2. `POST /api/analyze`
+
+**Purpose**: Analyze lab report
+
+**Request**:
+```
+Content-Type: multipart/form-data
+file: <PDF or image file>
+```
+
+**Response**:
+```json
+{
+    "success": true,
+    "summary": {
+        "total_tests": 4,
+        "kb_matched": 1,
+        "kb_match_rate": "25.0%",
+        "low_results": 0,
+        "normal_results": 1,
+        "high_results": 0,
+        "unknown_results": 3
+    },
+    "overall_summary": "Your lab results show...",
+    "confidence": {
+        "ocr_confidence": 0.91,
+        "ocr_level": "HIGH",
+        "response_confidence": 0.32,
+        "response_level": "LOW",
+        "confidence_source": "Knowledge Base (1/4 tests matched)"
+    },
+    "tests": [
+        {
+            "test_name": "Hemoglobin",
+            "value": 14.5,
+            "unit": "g/dL",
+            "classification": "NORMAL",
+            "reference_range": "13.5-17.5",
+            "ai_explanation": "",
+            "kb_found": true,
+            "canonical_name": "Hemoglobin A1c",
+            "panel_name": "Complete Blood Count"
+        }
+    ],
+    "disclaimer": "⚠️ MEDICAL DISCLAIMER: ..."
+}
+```
+
+---
+
+### 3. `GET /api/stats`
+
+**Purpose**: Get KB statistics
+
+**Response**:
+```json
+{
+    "overview": {
+        "total_tests": 1043,
+        "total_sources": 52,
+        "total_ranges": 10234,
+        "total_synonyms": 5123,
+        "loinc_coverage": "45.2%",
+        "avg_synonyms_per_test": 4.9
+    },
+    "distributions": {
+        "by_category": [...],
+        "by_panel": [...],
+        "by_source_type": [...]
+    },
+    "top_sources": [...]
+}
+```
+
+---
+
+## Data Flow
+
+### Complete Analysis Flow
 
 ```
-frontend/
-├── api/
-├── components/
-├── pages/
-├── services/
-└── App.jsx
+1. User uploads PDF/image
+   ↓
+2. Frontend sends to /api/analyze
+   ↓
+3. Backend validates file
+   ↓
+4. OCR Service extracts text
+   ↓
+5. Parsing Service (OpenAI) extracts structured data
+   ↓
+6. RAG Service looks up each test in KB
+   ↓
+7. Classification Service classifies results
+   ↓
+8. OpenAI Service generates summary
+   ↓
+9. OpenAI Service calculates confidence
+   ↓
+10. Lab Service formats response
+   ↓
+11. Frontend displays results
 ```
 
-### UI Responsibilities
+---
 
-* File upload
-* Progress display
-* Result rendering
-* No medical logic
+## Configuration
+
+### Environment Variables
+
+```env
+# OpenAI
+OPENAI_API_KEY=your_key
+OPENAI_BASE_URL=https://models.inference.ai.azure.com
+OPENAI_EXTRACTION_MODEL=gpt-4o-mini
+OPENAI_SUMMARY_MODEL=gpt-4o-mini
+OPENAI_TEMPERATURE=0.1
+OPENAI_MAX_TOKENS=2000
+
+# Application
+APP_VERSION=1.0.0
+DEBUG=False
+MAX_UPLOAD_SIZE=10485760
+
+# Database
+DATABASE_URL=sqlite:///./data/labwise.db
+
+# CORS
+CORS_ORIGINS=["http://localhost:5173"]
+
+# Confidence Thresholds
+CONFIDENCE_LOW_THRESHOLD=0.5
+CONFIDENCE_MEDIUM_THRESHOLD=0.7
+```
 
 ---
 
-## 9. Model Selection Justification
+## Security Considerations
 
-**Recommended Model:** Phi-3 Mini (3.8B)
-
-**Why:**
-
-* Runs on 8 GB RAM
-* CPU optimized
-* Deterministic outputs
-* Excellent for structured explanations
-* Offline & privacy-safe
-
-Not recommended:
-
-* LLaMA 8B
-* Mistral 7B
-* Vision-language models
+1. **File Upload**: Size limits, type validation
+2. **API Keys**: Stored in .env, never committed
+3. **CORS**: Restricted to specific origins
+4. **Input Validation**: Pydantic models
+5. **Error Handling**: Generic error messages to users
+6. **Medical Disclaimer**: Always included in responses
 
 ---
 
-## 10. Safety & Transparency Measures
+## Performance Optimization
 
-* Rule-based medical logic
-* Knowledge Base grounding
-* Confidence scoring
-* KB usage indicator
-* Mandatory disclaimer
-* No diagnosis or medication advice
-
----
-
-## 11. Why This Architecture Is Industry-Grade
-
-* Clean Architecture
-* Separation of concerns
-* Replaceable components
-* Agent-driven workflows
-* Medical AI safety alignment
-* Scalable to production systems
+1. **OCR Caching**: EasyOCR models cached after first load
+2. **Database Indexing**: Indexed on test names and synonyms
+3. **Async Processing**: FastAPI async endpoints
+4. **Connection Pooling**: SQLAlchemy connection management
+5. **Frontend Bundling**: Vite optimization
 
 ---
 
-## 12. Examiner-Ready Summary
+## Future Enhancements
 
-LabWise AI is an autonomous, offline medical AI agent that converts lab reports into structured, explained results using OCR, rule-based classification, RAG, and local generative AI. The system ensures safety through deterministic logic, transparency through confidence and KB indicators, and privacy through local execution.
-
----
-
-## 13. Implementation Details
-
-### Database Schema
-
-**Tests Table:**
-- test_id (PK)
-- canonical_name
-- short_name
-- panel_name
-- category
-- description
-
-**Ranges Table:**
-- range_id (PK)
-- test_id (FK)
-- source_id (FK)
-- ref_low, ref_high
-- unit
-- sex, age_min, age_max
-- condition
-
-**Sources Table:**
-- source_id (PK)
-- name
-- trust_level
-- year
-
-**Synonyms Table:**
-- synonym_id (PK)
-- test_id (FK)
-- synonym
-
-### Service Layer Components
-
-1. **OCR Service**: PaddleOCR integration with image preprocessing
-2. **Parsing Service**: Regex-based extraction of test data
-3. **RAG Service**: Knowledge base queries with synonym matching
-4. **Classification Service**: Rule-based LOW/NORMAL/HIGH determination
-5. **LLM Service**: Ollama client for explanation generation
-6. **Lab Service**: Main orchestrator coordinating all services
+1. **Multi-page PDF Support**: Process multi-page reports
+2. **Batch Processing**: Analyze multiple reports
+3. **Export Options**: PDF, CSV export of results
+4. **User Accounts**: Save analysis history
+5. **Advanced Visualizations**: Trend charts, comparisons
+6. **Mobile App**: React Native version
+7. **Offline Mode**: Fully offline LLM option
 
 ---
 
-## 14. Conclusion
+## Deployment
 
-This document fully defines **what to build, why it is built this way, and how every component interacts**.
-A developer can implement the system end-to-end by following this specification without external clarification.
+### Docker Deployment
+
+```bash
+docker-compose up -d
+```
+
+### Manual Deployment
+
+```bash
+# Backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Frontend
+npm run build
+npm run preview
+```
 
 ---
 
-**End of Documentation**
+## Monitoring & Logging
+
+- **Logging**: Python logging module
+- **Log Levels**: INFO, WARNING, ERROR
+- **Log Files**: Console output (can be redirected)
+- **Metrics**: Processing time per step
+
+---
+
+**Last Updated**: 2025-12-27
+**Version**: 1.0.0

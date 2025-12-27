@@ -8,7 +8,6 @@ class HealthResponse(BaseModel):
     """Health check response"""
     status: str
     version: str
-    ollama_available: bool
 
 class TestResult(BaseModel):
     """Individual test result"""
@@ -26,6 +25,7 @@ class AnalysisResponse(BaseModel):
     """Lab report analysis response"""
     success: bool
     summary: Optional[Dict[str, Any]] = None
+    overall_summary: Optional[str] = None
     confidence: Optional[Dict[str, Any]] = None
     tests: Optional[List[TestResult]] = None
     disclaimer: Optional[str] = None
@@ -36,3 +36,10 @@ class ErrorResponse(BaseModel):
     """Error response"""
     detail: str
     error_type: Optional[str] = None
+
+class StatsResponse(BaseModel):
+    """Knowledge base statistics response"""
+    overview: Dict[str, Any]
+    distributions: Dict[str, List[Dict[str, Any]]]
+    top_sources: List[Dict[str, Any]]
+

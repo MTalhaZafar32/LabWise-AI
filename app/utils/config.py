@@ -45,11 +45,19 @@ class Settings(BaseSettings):
     OCR_CONFIDENCE_THRESHOLD: float = 0.7
     USE_GPU: bool = False
     
-    # LLM Settings
+    # LLM Settings (Ollama - Legacy/Commented Out)
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     LLM_MODEL: str = "phi3:mini"
     LLM_TEMPERATURE: float = 0.3
     LLM_MAX_TOKENS: int = 500
+    
+    # OpenAI API Settings (Active)
+    OPENAI_API_KEY: str = ""  # From .env
+    OPENAI_EXTRACTION_MODEL: str = "gpt-4o-mini"  # For extraction
+    OPENAI_SUMMARY_MODEL: str = "gpt-4o-mini"  # For summary
+    OPENAI_TEMPERATURE: float = 0.1
+    OPENAI_MAX_TOKENS: int = 2000
+
     
     # File Upload
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB

@@ -114,6 +114,10 @@ class RAGService:
         # Take the first (highest priority) range
         best_range = ranges[0]
         
+        # Get source trust level
+        source = db.query(Source).filter(Source.source_id == best_range.source_id).first()
+        trust_level = source.trust_level if source else 3
+        
         return {
             'ref_low': best_range.ref_low,
             'ref_high': best_range.ref_high,
@@ -121,6 +125,8 @@ class RAGService:
             'unit': best_range.unit,
             'value_type': best_range.value_type,
             'source_id': best_range.source_id,
+            'source_priority': best_range.source_priority,
+            'trust_level': trust_level,
             'sex': best_range.sex,
             'condition': best_range.condition
         }
@@ -144,6 +150,10 @@ class RAGService:
         # Get reference range
         ref_range = self.get_reference_range(db, test.test_id)
         
+        # Extract trust level and source priority for confidence calculation
+        trust_level = ref_range.get('trust_level', 3) if ref_range else 3
+        source_priority = ref_range.get('source_priority', 3) if ref_range else 3
+        
         return {
             'test_id': test.test_id,
             'canonical_name': test.canonical_name,
@@ -152,9 +162,23 @@ class RAGService:
             'category': test.category,
             'description': test.description,
             'reference_range': ref_range,
+            'trust_level': trust_level,
+            'source_priority': source_priority,
             'kb_found': True
         }
     
+    def get_all_test_names(self, db: Session) -> List[str]:
+        """
+        Get list of all standard test names from KB
+        Used for helping LLM extraction
+        """
+        try:
+            tests = db.query(Test.canonical_name).all()
+            return [t[0] for t in tests]
+        except Exception as e:
+            logger.error(f"Failed to fetch test names: {e}")
+            return []
+
     def batch_lookup(self, db: Session, test_results: List[Dict]) -> List[Dict]:
         """
         Lookup multiple tests in knowledge base

@@ -1,7 +1,7 @@
 """
-OCR Service for text extraction from images
+OCR Service for text extraction from images using EasyOCR
 """
-from paddleocr import PaddleOCR
+import easyocr
 import cv2
 import numpy as np
 from PIL import Image
@@ -12,14 +12,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OCRService:
-    """Service for OCR text extraction"""
+    """Service for OCR text extraction using EasyOCR"""
     
     def __init__(self):
-        """Initialize PaddleOCR"""
-        self.ocr = PaddleOCR(
-            use_angle_cls=True,
-            lang='en'
-        )
+        """Initialize EasyOCR"""
+        logger.info("Initializing EasyOCR...")
+        self.reader = easyocr.Reader(['en'], gpu=False)  # CPU mode for compatibility
+        logger.info("EasyOCR initialized successfully")
     
     def preprocess_image(self, image: Image.Image) -> np.ndarray:
         """
@@ -50,98 +49,56 @@ class OCRService:
         # Threshold
         _, binary = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
-        # Convert back to BGR for compatibility with PaddleOCR
-        bgr = cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
-        
-        return bgr
+        return binary
     
     def extract_text(self, image: Image.Image) -> Tuple[str, float]:
         """
-        Extract text from image using OCR
+        Extract text from a single image using EasyOCR
         
         Args:
             image: PIL Image object
             
         Returns:
-            Tuple of (extracted_text, average_confidence)
+            Tuple of (extracted_text, confidence_score)
         """
         try:
+            logger.info("Starting OCR extraction...")
+            
             # Preprocess image
             processed_img = self.preprocess_image(image)
             
-            logger.info("Starting OCR processing...")
-            try:
-                # Perform OCR
-                result = self.ocr.ocr(processed_img)
-            except Exception as ocr_err:
-                logger.error(f"Internal PaddleOCR error: {str(ocr_err)}")
-                # Try with original image if preprocessing fails
-                logger.info("Retrying with original image...")
-                result = self.ocr.ocr(np.array(image))
-
-            # Debug logs to inspect structure
-            logger.info(f"OCR Result type: {type(result)}")
-            logger.info(f"OCR Result: {result}")
+            # Perform OCR
+            logger.info("Running EasyOCR...")
+            results = self.reader.readtext(processed_img)
             
-            if not result:
-                logger.warning("No text detected (empty result)")
+            if not results:
+                logger.warning("No text detected in image")
                 return "", 0.0
-
-            # Handle different result structures
-            # PaddleOCR sometimes returns [None] or just None if no text found
-            if result[0] is None:
-                 logger.warning("No text detected (result[0] is None)")
-                 return "", 0.0
             
-            # Extract text and confidence scores
-            lines = []
+            # Extract text and calculate average confidence
+            extracted_lines = []
             confidences = []
             
-            # Iterate through the first element if it's a list (standard structure)
-            # Structure usually: [ [[box], (text, score)], ... ]
-            ocr_data = result[0] if isinstance(result, list) and len(result) > 0 else result
+            for (bbox, text, conf) in results:
+                extracted_lines.append(text)
+                confidences.append(conf)
+                logger.debug(f"Detected: '{text}' (confidence: {conf:.2f})")
             
-            if not isinstance(ocr_data, list):
-                logger.warning(f"Unexpected OCR result format: {type(ocr_data)}")
-                return "", 0.0
-
-            for line in ocr_data:
-                # Debug line structure
-                # logger.info(f"Line data: {line}") 
-                pass
-            
-            for line in ocr_data:
-                try:
-                    # Expected: line = [box, (text, score)]
-                    # box = [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
-                    # text_info = ('text', 0.99)
-                    
-                    if len(line) >= 2 and isinstance(line[1], (list, tuple)):
-                        text = line[1][0]
-                        confidence = line[1][1]
-                        lines.append(text)
-                        confidences.append(confidence)
-                    else:
-                        logger.warning(f"Unexpected item format in OCR result: {line}")
-                except Exception as loop_err:
-                     logger.warning(f"Error parsing line: {line} - {loop_err}")
-                     continue
-            
-            # Combine text
-            full_text = '\n'.join(lines)
+            # Combine all text
+            full_text = "\n".join(extracted_lines)
             avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
             
-            logger.info(f"OCR extracted {len(lines)} lines with avg confidence: {avg_confidence:.2f}")
+            logger.info(f"OCR completed. Extracted {len(extracted_lines)} lines with avg confidence: {avg_confidence:.2f}")
             
             return full_text, avg_confidence
             
         except Exception as e:
-            logger.error(f"OCR extraction failed: {str(e)}")
+            logger.error(f"OCR extraction failed: {str(e)}", exc_info=True)
             raise ValueError(f"OCR extraction failed: {str(e)}")
     
     def extract_from_multiple_images(self, images: List[Image.Image]) -> Tuple[str, float]:
         """
-        Extract text from multiple images (e.g., PDF pages)
+        Extract text from multiple images
         
         Args:
             images: List of PIL Image objects
@@ -152,13 +109,13 @@ class OCRService:
         all_text = []
         all_confidences = []
         
-        for i, image in enumerate(images):
-            logger.info(f"Processing image {i+1}/{len(images)}")
+        for idx, image in enumerate(images):
+            logger.info(f"Processing image {idx + 1}/{len(images)}")
             text, confidence = self.extract_text(image)
             all_text.append(text)
             all_confidences.append(confidence)
         
-        combined_text = '\n\n'.join(all_text)
+        combined_text = "\n\n".join(all_text)
         avg_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0.0
         
         return combined_text, avg_confidence
