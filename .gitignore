@@ -40,8 +40,7 @@ venv.bak/
 *.db
 *.sqlite
 *.sqlite3
-data/*.db
-
+!data/app.db
 # Uploads and Temp Files
 uploads/
 temp/
